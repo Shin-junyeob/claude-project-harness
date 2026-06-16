@@ -33,3 +33,6 @@ Thumbs.db
 
 # 환경변수 실제값 (예시는 .env.example 만 커밋)
 .env
+
+# publish.sh 의 원격 작업 클론 (발행 대상 아님)
+.publish-workdir/
