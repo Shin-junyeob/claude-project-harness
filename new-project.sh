@@ -62,6 +62,10 @@ cp     "$GLOBAL_DIR/.pre-commit-config.yaml" "$DEST/.pre-commit-config.yaml"
 # 복제 시 따라온 런타임 상태(.omc 등) 제거 — 새 프로젝트에 세션 상태가 섞이지 않게 한다.
 find "$DEST" -name '.omc' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 
+# 하네스 전용 도구는 새 프로젝트에 복제하지 않는다(publish.sh 는 애초에 복사 목록에 없음).
+#   /publish 슬래시 커맨드(publish.md)는 .claude/commands 통째 복사로 따라오므로 제거한다.
+rm -f "$DEST/.claude/commands/publish.md" "$DEST/publish.sh" 2>/dev/null || true
+
 # ── 표준 빈 폴더 ─────────────────────────────────────────────────────
 for d in docs logs src; do
   mkdir -p "$DEST/$d"
