@@ -1,0 +1,6 @@
+# 보호할 민감 경로 (한 줄에 하나, glob 패턴 지원)
+# 예시 — 프로젝트에 맞게 추가/수정하세요.
+*.env
+*/secrets/*
+*/.git/config
+*/credentials*

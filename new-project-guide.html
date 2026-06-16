@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>new-project.sh 가이드 — 하네스 사용법 & 구현</title>
+<style>
+  :root{
+    --bg:#0f1320; --panel:#181d2e; --panel2:#1f2538; --ink:#e8ecf5; --muted:#9aa4bd;
+    --line:#2c3550; --accent:#5bd1a6; --accent2:#6aa9ff; --warn:#f0b454; --danger:#f0738a;
+    --mono:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,"Segoe UI",Roboto,"Noto Sans KR",sans-serif;
+    font-size:15.5px;line-height:1.72}
+  .wrap{max-width:980px;margin:0 auto;padding:40px 22px 80px}
+  header.hero{padding:34px 0 22px;border-bottom:1px solid var(--line)}
+  .hero h1{font-size:30px;margin:0 0 8px;letter-spacing:-.3px}
+  .hero p{color:var(--muted);margin:0;max-width:70ch}
+  .cmd{display:inline-block;background:#0b0e18;border:1px solid var(--line);border-radius:8px;
+    padding:6px 12px;font-family:var(--mono);color:var(--accent);font-size:14px;margin-top:14px}
+  h2{font-size:21px;margin:46px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+  h3{font-size:16px;margin:24px 0 8px;color:var(--accent2)}
+  p{margin:10px 0}
+  code{font-family:var(--mono);background:#0b0e18;border:1px solid var(--line);
+    border-radius:5px;padding:1px 6px;font-size:13.5px;color:#cdd6f0}
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:1fr 1fr}
+  @media(max-width:720px){.g2{grid-template-columns:1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .card h3{margin-top:0}
+  .chip{display:inline-block;font-size:12px;font-family:var(--mono);padding:2px 8px;border-radius:20px;
+    border:1px solid var(--line);color:var(--muted);margin:2px 4px 2px 0}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12.5px;text-transform:uppercase;letter-spacing:.4px}
+  td code{font-size:12.5px}
+  .tree{background:#0b0e18;border:1px solid var(--line);border-radius:10px;padding:18px 20px;
+    font-family:var(--mono);font-size:13px;line-height:1.85;color:#cdd6f0;overflow-x:auto;white-space:pre}
+  .tree .c{color:var(--muted)}
+  .tree .k{color:var(--accent)}
+  .tree .y{color:var(--warn)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;color:var(--muted);font-size:13px;margin:8px 0}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:middle}
+  .steps{counter-reset:s;list-style:none;padding:0;margin:14px 0}
+  .steps li{position:relative;padding:10px 0 10px 44px;border-bottom:1px solid var(--line)}
+  .steps li:before{counter-increment:s;content:counter(s);position:absolute;left:0;top:9px;
+    width:28px;height:28px;border-radius:50%;background:var(--panel2);border:1px solid var(--line);
+    color:var(--accent);font-family:var(--mono);font-size:13px;display:grid;place-items:center}
+  .note{border-left:3px solid var(--accent);background:var(--panel2);border-radius:0 8px 8px 0;
+    padding:10px 16px;margin:14px 0;color:#d6deef;font-size:14px}
+  .warn{border-left-color:var(--warn)}
+  .sev{font-family:var(--mono);font-size:11px;padding:1px 7px;border-radius:5px}
+  .block{background:rgba(240,115,138,.14);color:var(--danger);border:1px solid rgba(240,115,138,.3)}
+  .warnb{background:rgba(240,180,84,.14);color:var(--warn);border:1px solid rgba(240,180,84,.3)}
+  .okb{background:rgba(91,209,166,.14);color:var(--accent);border:1px solid rgba(91,209,166,.3)}
+  svg{max-width:100%;height:auto;display:block;margin:8px auto}
+  .mono{font-family:var(--mono);font-size:13px;color:var(--muted)}
+  footer{margin-top:60px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>🏗️ new-project.sh — 하네스 가이드</h1>
+  <p>전역 디렉토리는 <b>새 프로젝트를 찍어내는 금형(템플릿)</b>입니다. 공통 규칙·훅·도구·자율 실행 루프를 미리 갖춰두고, 한 번의 명령으로 새 프로젝트 폴더에 복제합니다.</p>
+  <span class="cmd">$ ./new-project.sh &lt;프로젝트명&gt;</span>
+</header>
+
+<h2>① 한눈에</h2>
+<div class="grid g2">
+  <div class="card">
+    <h3>무엇을 하나</h3>
+    <p>전역의 공통 세팅을 새 폴더로 <b>복제</b> → <b>git</b>(main/stable) 초기화 → <b>pre-commit</b> 활성화 → (gh 있으면) <b>GitHub private 리포</b> 생성·푸시.</p>
+  </div>
+  <div class="card">
+    <h3>무엇을 위해</h3>
+    <p>모든 프로젝트가 동일한 <b>규칙·안전장치·자율 실행 루프</b>를 갖고 시작하도록. 매번 세팅을 다시 만들 필요가 없습니다.</p>
+  </div>
+</div>
+<div class="legend" style="margin-top:14px">
+  <span class="chip">📜 규칙 7</span><span class="chip">🪝 훅 8</span><span class="chip">🤖 에이전트 4</span>
+  <span class="chip">🔁 자율 루프</span><span class="chip">🧪 CI + 테스트</span><span class="chip">🔌 MCP(github·notion)</span>
+</div>
+
+<h2>② 사용법</h2>
+<ol class="steps">
+  <li><b>생성</b> — <code>./new-project.sh myproj</code> (이름에 <code>/</code>·공백·<code>.</code>/<code>-</code> 시작은 거부, 한글 허용)</li>
+  <li><b>환경</b> — 생성된 폴더에서 <code>make setup</code> (venv + 의존성, pyyaml 포함)</li>
+  <li><b>작성</b> — <code>cp spec.template.yaml spec.yaml</code> 후 프로젝트 설명·결과물·golden 경로 기입</li>
+  <li><b>자율 실행</b> — Claude Code 에서 <code>/autoloop</code> → 결과물이 golden 에 도달할 때까지 자동 반복</li>
+</ol>
+<div class="note warn"><b>주의</b> — 같은 이름의 폴더가 이미 있으면 덮어쓰지 않고 중단합니다. <code>gh</code> 미인증이면 GitHub 연동만 건너뛰고 로컬은 정상 생성됩니다.</div>
+
+<h2>③ 무엇이 복제되는가</h2>
+<p>복사는 <b>화이트리스트 방식</b>입니다(필요한 것만 통째로). 런타임 상태(<code>.omc</code>)는 복제 후 자동 제거됩니다.</p>
+<table>
+  <tr><th>분류</th><th>항목</th><th>비고</th></tr>
+  <tr><td>규칙</td><td><code>rules/</code> (7개)</td><td>코딩·구조·워크플로·커밋·자율실행·컨텍스트·문서갱신</td></tr>
+  <tr><td>Claude</td><td><code>.claude/hooks · agents · commands · settings.json</code></td><td>훅·에이전트·/autoloop·훅등록</td></tr>
+  <tr><td>자율루프</td><td><code>tools/evaluate.py</code>, <code>spec.template.yaml</code>, <code>tests/</code></td><td>오라클·입력계약·테스트</td></tr>
+  <tr><td>품질</td><td><code>.github/</code>, <code>.githooks/</code>, <code>pyproject.toml</code>, <code>Makefile</code>, <code>ruff/pytest 설정</code></td><td>CI·pre-commit·의존성·작업명령</td></tr>
+  <tr><td>환경</td><td><code>.gitignore · .gitattributes · .editorconfig · .env.example · .pre-commit-config.yaml</code></td><td>줄바꿈·에디터·env 예시</td></tr>
+  <tr><td>생성물</td><td><code>CLAUDE.md · README.md · docs/ logs/ src/ · logs/CHECKPOINT.md</code></td><td>프로젝트명으로 생성</td></tr>
+</table>
+<div class="note"><b>복사 안 함(의도적)</b> — <code>mcp/</code>(전역 참조), <code>.claude/settings.local.json</code>(프로젝트별 권한은 Claude Code 가 자동 관리), 다른 프로젝트 폴더·메모리·개인 파일.</div>
+
+<h2>④ 폴더 구조 (복제 결과)</h2>
+<div class="tree"><span class="k">myproj/</span>
+├── <span class="k">CLAUDE.md</span><span class="c">          # 이정표(경로 지도) — 규칙·도구 위치를 가리킴</span>
+├── README.md
+├── <span class="k">spec.template.yaml</span><span class="c"> # → spec.yaml 로 복사해 자율 실행 명세 작성</span>
+├── Makefile<span class="c">           # make setup / test / lint / run / eval</span>
+├── pyproject.toml<span class="c">     # 의존성 + ruff + pytest 통합</span>
+├── <span class="k">rules/</span><span class="c">             # 공통 규칙 7</span>
+│   ├── coding_conventions.md   project_structure.md   workflow.md
+│   ├── commit_conventions.md   doc_update_rules.md
+│   ├── <span class="y">autonomous_workflow.md</span><span class="c">  # 자율 루프 절차</span>
+│   └── <span class="y">context_management.md</span><span class="c">   # 긴 루프 컨텍스트 유지</span>
+├── <span class="k">tools/</span>
+│   └── <span class="y">evaluate.py</span><span class="c">        # 결과물 vs golden 비교 오라클</span>
+├── <span class="k">tests/</span><span class="c">             # test_smoke.py, test_evaluate.py</span>
+├── <span class="k">.claude/</span>
+│   ├── hooks/<span class="c">         # 안전장치 8</span>
+│   ├── agents/<span class="c">        # planner·implementer·validator·doc-updater</span>
+│   ├── commands/<span class="c">      # autoloop.md (/autoloop)</span>
+│   └── settings.json<span class="c">  # 훅 등록 (권한=settings.local.json, 미복제)</span>
+├── <span class="k">.github/</span>workflows/ci.yml<span class="c">   # ruff + pytest</span>
+├── <span class="k">.githooks/</span>pre-commit<span class="c">       # 비밀정보 커밋 차단</span>
+├── <span class="k">src/</span><span class="c">      # 구현 코드(여기에만)</span>
+├── <span class="k">docs/</span>
+└── <span class="k">logs/</span>
+    └── <span class="y">CHECKPOINT.md</span><span class="c">      # compact/재시작 시 가장 먼저 재읽기</span>
+</div>
+
+<h2>⑤ Loop Station — 자율 실행이 도는 법</h2>
+<p>사람이 매 턴 개입하지 않고, <b>명세(spec) + golden data</b>를 근거로 결과물이 목표에 도달할 때까지 스스로 반복합니다. 판정 오라클은 <code>tools/evaluate.py</code>, 학습 근거는 <code>logs/</code>.</p>
+
+<svg viewBox="0 0 760 360" role="img" aria-label="자율 실행 루프 다이어그램">
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#6aa9ff"/>
+    </marker>
+    <marker id="arrG" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#5bd1a6"/>
+    </marker>
+    <marker id="arrR" markerWidth="10" markerHeight="10" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L7,3 L0,6 Z" fill="#f0738a"/>
+    </marker>
+  </defs>
+  <!-- cold start -->
+  <rect x="20" y="20" width="170" height="56" rx="10" fill="#1f2538" stroke="#2c3550"/>
+  <text x="105" y="44" fill="#e8ecf5" font-size="14" text-anchor="middle" font-weight="700">0. 콜드스타트</text>
+  <text x="105" y="62" fill="#9aa4bd" font-size="11.5" text-anchor="middle">make setup + 골격 작성</text>
+
+  <!-- produce -->
+  <rect x="20" y="150" width="170" height="60" rx="10" fill="#1f2538" stroke="#6aa9ff"/>
+  <text x="105" y="176" fill="#e8ecf5" font-size="14.5" text-anchor="middle" font-weight="700">1. produce</text>
+  <text x="105" y="195" fill="#9aa4bd" font-size="11.5" text-anchor="middle">make run → 결과물 생성</text>
+
+  <!-- evaluate (gate) -->
+  <rect x="295" y="150" width="170" height="60" rx="10" fill="#16233a" stroke="#5bd1a6" stroke-width="2"/>
+  <text x="380" y="176" fill="#e8ecf5" font-size="14.5" text-anchor="middle" font-weight="700">2. evaluate</text>
+  <text x="380" y="195" fill="#9aa4bd" font-size="11.5" text-anchor="middle">make eval (오라클)</text>
+
+  <!-- done -->
+  <rect x="575" y="150" width="160" height="60" rx="10" fill="#16332a" stroke="#5bd1a6"/>
+  <text x="655" y="176" fill="#5bd1a6" font-size="14.5" text-anchor="middle" font-weight="700">✓ 완료</text>
+  <text x="655" y="195" fill="#9aa4bd" font-size="11.5" text-anchor="middle">exit 0 (golden 도달)</text>
+
+  <!-- fix -->
+  <rect x="295" y="280" width="170" height="58" rx="10" fill="#1f2538" stroke="#f0738a"/>
+  <text x="380" y="305" fill="#e8ecf5" font-size="14.5" text-anchor="middle" font-weight="700">3. fix</text>
+  <text x="380" y="323" fill="#9aa4bd" font-size="11.5" text-anchor="middle">logs 읽고 src/ 수정</text>
+
+  <!-- logs -->
+  <rect x="575" y="280" width="160" height="58" rx="10" fill="#1f2538" stroke="#2c3550"/>
+  <text x="655" y="303" fill="#e8ecf5" font-size="13.5" text-anchor="middle" font-weight="700">logs/</text>
+  <text x="655" y="321" fill="#9aa4bd" font-size="11" text-anchor="middle">eval/latest · iterations · CHECKPOINT</text>
+
+  <!-- arrows -->
+  <path d="M105,76 L105,148" fill="none" stroke="#6aa9ff" stroke-width="2" marker-end="url(#arr)"/>
+  <path d="M190,180 L293,180" fill="none" stroke="#6aa9ff" stroke-width="2" marker-end="url(#arr)"/>
+  <path d="M465,180 L573,180" fill="none" stroke="#5bd1a6" stroke-width="2" marker-end="url(#arrG)"/>
+  <text x="520" y="170" fill="#5bd1a6" font-size="11" text-anchor="middle">PASS</text>
+  <path d="M380,210 L380,278" fill="none" stroke="#f0738a" stroke-width="2" marker-end="url(#arrR)"/>
+  <text x="410" y="248" fill="#f0738a" font-size="11" text-anchor="middle">FAIL</text>
+  <path d="M465,309 L575,309" fill="none" stroke="#9aa4bd" stroke-width="1.6" marker-end="url(#arr)" opacity=".7"/>
+  <path d="M295,309 L240,309 L240,210" fill="none" stroke="#f0738a" stroke-width="2" marker-end="url(#arrR)"/>
+  <text x="170" y="250" fill="#9aa4bd" font-size="11" text-anchor="middle">재시도(≤ max_iterations)</text>
+</svg>
+
+<div class="legend">
+  <span><span class="dot" style="background:#6aa9ff"></span>흐름</span>
+  <span><span class="dot" style="background:#5bd1a6"></span>통과/완료</span>
+  <span><span class="dot" style="background:#f0738a"></span>실패→수정</span>
+</div>
+
+<h3>판정 모드 (게이밍 방지)</h3>
+<table>
+  <tr><th>golden.mode</th><th>판정 방식</th><th>용도</th></tr>
+  <tr><td><code>reproduce</code></td><td><code>output_path</code> 를 <code>golden.path</code> 와 비교</td><td>고정 1회성 산출물 재현</td></tr>
+  <tr><td><code>generalize</code></td><td><b>holdout</b> 으로만 최종 판정(<code>holdout_output_path</code> vs <code>holdout_path</code>)</td><td>변하는 입력을 처리하는 생성기</td></tr>
+</table>
+<div class="note warn"><b>오라클 게이밍 방지</b> — generalize 모드에선 holdout golden 의 diff 를 로그에 노출하지 않습니다. 그래서 루프가 "golden 복사"가 아니라 "일반화하는 생성기"로 수렴합니다. <code>threshold &lt; 1.0</code> 이면 모든 모드에서 유사도 기반 통과를 허용합니다.</div>
+
+<h2>⑥ 안전장치 — 훅 8종</h2>
+<p>규칙(읽고 지키는 문서)과 달리 <b>훅은 자동으로 작동</b>합니다. 차단 훅은 위반 시 명령을 막습니다.</p>
+<table>
+  <tr><th>훅</th><th>시점</th><th>동작</th><th>판정</th></tr>
+  <tr><td><code>block_dangerous_commands</code></td><td>Bash</td><td><code>rm -rf /·~·*</code>, force push, reset --hard, dd 차단</td><td><span class="sev block">차단</span></td></tr>
+  <tr><td><code>block_repo_delete</code></td><td>Bash</td><td>원격 저장소/브랜치 삭제 차단</td><td><span class="sev block">차단</span></td></tr>
+  <tr><td><code>block_stable_merge</code></td><td>Bash</td><td>stable merge는 main CI 통과 시에만(2단계 절차도 감지)</td><td><span class="sev block">CI 게이트</span></td></tr>
+  <tr><td><code>check_commit_message</code></td><td>Bash</td><td><code>type: subject</code> 영어 커밋 강제</td><td><span class="sev block">차단</span></td></tr>
+  <tr><td><code>block_access</code></td><td>Write/Edit</td><td>민감 경로(<code>.env</code>·secrets) 수정 차단</td><td><span class="sev block">차단</span></td></tr>
+  <tr><td><code>enforce_src_layout</code></td><td>Write/Edit</td><td>코드는 <code>src/</code> 안에만(<code>tools·tests·.claude</code> 예외)</td><td><span class="sev block">차단</span></td></tr>
+  <tr><td><code>update_claude_md</code></td><td>Write/Edit</td><td>CLAUDE.md 형식 검증</td><td><span class="sev warnb">경고</span></td></tr>
+  <tr><td><code>log_writer</code></td><td>모든 도구</td><td>에러를 <code>logs/error_log.md</code> 자동 기록</td><td><span class="sev okb">로그</span></td></tr>
+</table>
+<p class="mono">+ git 레벨 <code>.githooks/pre-commit</code> : 사람이 직접 커밋해도 비밀정보(.env·토큰·키)를 차단.</p>
+
+<h2>⑦ 구현 방식 (new-project.sh 내부)</h2>
+<div class="grid g2">
+  <div class="card"><h3>1) 인자 검증</h3><p>이름에 경로 구분자·공백, <code>.</code>/<code>-</code> 시작을 거부. 기존 폴더가 있으면 덮어쓰지 않고 중단(<span class="mono">멱등·안전</span>).</p></div>
+  <div class="card"><h3>2) 화이트리스트 복사</h3><p><code>cp -r</code> 로 폴더 통째 복사 → 새 파일이 자동 포함. 복사 후 <code>.omc</code> 런타임 상태를 prune.</p></div>
+  <div class="card"><h3>3) 생성물</h3><p>프로젝트명으로 <code>CLAUDE.md</code>(경로표) · <code>README.md</code> · <code>logs/CHECKPOINT.md</code> 시드 작성.</p></div>
+  <div class="card"><h3>4) git + 안전망</h3><p><code>git init</code> → main/stable 브랜치 → <code>.git/hooks</code> 에 pre-commit 설치(+<code>core.hooksPath=.githooks</code>) → 영어 컨벤션 초기 커밋.</p></div>
+  <div class="card"><h3>5) GitHub 연동</h3><p><code>gh</code> 인증 시 <code>gh repo create --private --push</code> 로 리포 생성 + main/stable 푸시. 미인증이면 건너뜀.</p></div>
+  <div class="card"><h3>6) 인터프리터 통일</h3><p>produce·evaluate 모두 <code>venv/bin/python</code>(make 타깃) 사용 — 복제 직후 첫 회차부터 깨지지 않게.</p></div>
+</div>
+
+<div class="note"><b>설정 파일 분리</b> — <code>settings.json</code>=공통 훅(복제됨, Claude Code가 안 건드림) / <code>settings.local.json</code>=권한(복제 안 함, 프로젝트마다 자동 관리). 훅 경로는 <code>$CLAUDE_PROJECT_DIR</code> 로 프로젝트 루트 기준 동작.</div>
+
+<footer>
+  생성: 전역 하네스 디렉토리 · new-project.sh 가이드 · 자기완결형 HTML(외부 의존 없음)<br>
+  상세 규칙은 <code>rules/</code>, 자율 루프 절차는 <code>rules/autonomous_workflow.md</code> 참조.
+</footer>
+
+</div>
+</body>
+</html>

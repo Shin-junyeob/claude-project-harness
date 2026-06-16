@@ -1,0 +1,35 @@
+# 공통 .gitignore — 새 프로젝트로 복사됨
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# 빌드/출력
+bin/
+obj/
+outputs/
+temp/
+*.log
+
+# 로그(이력은 보존하되 산출물 캐시는 제외)
+logs/*.tmp
+
+# OS / 에디터
+.DS_Store
+Thumbs.db
+.vs/
+.idea/
+*.swp
+
+# OMC / Claude 런타임 상태 (커밋 금지)
+.omc/
+
+# Claude Code 개인 권한·로컬 설정 (머신마다 다름, 커밋 금지)
+.claude/settings.local.json
+.claude/worktrees/
+.claude/scheduled_tasks.lock
+
+# 환경변수 실제값 (예시는 .env.example 만 커밋)
+.env

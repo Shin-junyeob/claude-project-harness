@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# git pre-commit 훅: 비밀정보 커밋 차단 + (가능하면) ruff 린트.
+# 의도적으로 우회하려면: git commit --no-verify
+set -u
+
+staged="$(git diff --cached --name-only --diff-filter=ACM)"
+[ -z "$staged" ] && exit 0
+
+fail=0
+
+# ── 1) 민감 파일명 차단 ──────────────────────────────────────────────
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  case "$f" in
+    .env|.env.*|*/.env|*/.env.*|*.pem|*.key|id_rsa|*/id_rsa|*credentials*|*.p12|*.pfx)
+      echo "✗ 민감 파일 커밋 시도: $f" >&2; fail=1;;
+  esac
+done <<< "$staged"
+
+# ── 2) 추가된 내용에서 시크릿 패턴 탐지 ──────────────────────────────
+added="$(git diff --cached -U0 --diff-filter=ACM | grep '^+' | grep -v '^+++')"
+patterns=(
+  'AKIA[0-9A-Z]{16}'                                  # AWS access key
+  '-----BEGIN [A-Z ]*PRIVATE KEY-----'                # private key
+  'gh[pousr]_[A-Za-z0-9]{20,}'                         # GitHub token
+  'xox[baprs]-[A-Za-z0-9-]+'                           # Slack token
+  '(api[_-]?key|secret|token|password|passwd|pwd)["'"'"' ]*[:=]["'"'"' ]*[A-Za-z0-9/+_.-]{8,}'
+)
+for pat in "${patterns[@]}"; do
+  if printf '%s' "$added" | grep -Eiq -e "$pat"; then
+    echo "✗ 시크릿 의심 패턴 발견 (/$pat/)" >&2; fail=1
+  fi
+done
+
+# ── 3) ruff 린트 (설치돼 있을 때만) ──────────────────────────────────
+if command -v ruff >/dev/null 2>&1; then
+  pyfiles="$(printf '%s\n' "$staged" | grep '\.py$' || true)"
+  if [ -n "$pyfiles" ] && ! printf '%s\n' "$pyfiles" | xargs ruff check 2>/dev/null; then
+    echo "✗ ruff 린트 실패 — 위 항목을 수정하세요." >&2; fail=1
+  fi
+fi
+
+if [ "$fail" -ne 0 ]; then
+  echo "" >&2
+  echo "커밋 차단됨. 의도적이면 'git commit --no-verify' 로 우회하세요." >&2
+  exit 1
+fi
+exit 0

@@ -1,0 +1,39 @@
+# 프로젝트 설정 허브 — 의존성 + ruff(린트/포맷) + pytest 설정을 한 곳에 모은다.
+# 패키지로 배포하려면 name 을 실제 프로젝트명으로 바꾸세요.
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "app"
+version = "0.1.0"
+description = "Project scaffold — rename in pyproject.toml"
+requires-python = ">=3.11"
+dependencies = ["pyyaml"]
+
+[project.optional-dependencies]
+dev = ["ruff", "pytest"]
+
+[tool.setuptools]
+# 스캐폴드 단계에선 패키지 모듈이 없으므로 자동탐색을 끈다(빈 src/ 에서 오류 방지).
+py-modules = []
+
+# ── ruff (rules/coding_conventions.md 기반) ──────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I isort, N pep8-naming, UP pyupgrade, B bugbear
+select = ["E", "F", "W", "I", "N", "UP", "B"]
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"
+
+# ── pytest ───────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q"

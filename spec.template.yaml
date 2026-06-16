@@ -1,0 +1,41 @@
+# 자율 실행 명세 (autonomous spec)
+# 새 프로젝트에서 이 파일을 spec.yaml 로 복사해 채우세요:  cp spec.template.yaml spec.yaml
+# /autoloop 또는 ralph/autopilot 가 이 명세를 읽어, 결과물이 golden 에 도달할 때까지
+# logs 를 근거로 스스로 반복합니다.
+
+project:
+  name: ""                       # 프로젝트명
+  description: ""                # 무엇을 만드는 프로젝트인지(자유 서술)
+
+structure: |                     # 기대하는 폴더/파일 구조(트리 또는 서술)
+  src/
+  outputs/
+
+# 입력 데이터(생성기 모드에서 사용). 1회성 재현이면 비워둔다.
+input:
+  path: ""                       # 결과물 생성에 쓰는 입력 데이터 경로(train)
+  holdout_path: ""               # 최종 판정용 입력(holdout) — 루프가 학습에 쓰면 안 됨
+
+produce:
+  # 기본 `make run` 은 src/main.py 를 실행할 뿐이다. **대부분 프로젝트에서 교체 필요** —
+  # output_path 에 실제 결과물을 쓰는 명령으로 바꾼다(반드시 venv/bin/python 또는 make 타깃 사용).
+  command: "make run"
+  output_path: "outputs/result.json"          # train/재현 결과물 경로
+  holdout_output_path: "outputs/holdout.json" # holdout 입력으로 생성한 결과물(generalize 모드에서 판정 대상)
+
+golden:
+  # mode:
+  #   reproduce  (기본) — 고정 1회성 산출물 재현. output_path 를 golden.path 와 비교.
+  #   generalize        — 변하는 입력을 처리하는 '생성기'. holdout 으로만 최종 판정(게이밍 방지).
+  mode: "reproduce"
+  path: ""                       # reproduce: 정답 결과물 경로(없으면 생성 여부만 확인)
+  holdout_path: ""               # generalize: holdout 정답 경로(필수). 루프/fix 는 이 파일을 보면 안 됨.
+  compare: "auto"                # auto | text | json | csv | bytes | similarity
+  threshold: 1.0                 # < 1.0 이면 모든 모드에서 유사도>=threshold 일 때 통과
+
+acceptance:                      # 사람이 읽는 보조 수용 기준
+  - "결과물이 produce 경로에 생성된다"
+  - "reproduce: 결과물이 golden.path 와 일치(또는 유사도>=threshold)"
+  - "generalize: holdout 결과물이 golden.holdout_path 와 일치(또는 유사도>=threshold)"
+
+max_iterations: 20               # 자율 루프 최대 시도 횟수(무한루프 방지)

@@ -1,0 +1,17 @@
+{
+  "//": "전역 MCP 서버 설정. 프로젝트에 복사하지 않고 이 파일을 참조한다.",
+  "//auth": "notion=OAuth(/mcp 로그인). github=토큰 헤더. GITHUB_MCP_PAT 환경변수로 주입(파일에 토큰 저장 금지).",
+  "mcpServers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer ${GITHUB_MCP_PAT}"
+      }
+    },
+    "notion": {
+      "type": "http",
+      "url": "https://mcp.notion.com/mcp"
+    }
+  }
+}

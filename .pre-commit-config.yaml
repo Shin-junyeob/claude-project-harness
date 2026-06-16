@@ -1,0 +1,31 @@
+# pre-commit 프레임워크 설정 (선택 사항).
+# 기본 활성 훅은 .githooks/pre-commit (new-project.sh 가 .git/hooks 설치 + core.hooksPath=.githooks).
+# 이 프레임워크를 대신 쓰려면 충돌을 피하기 위해 hooksPath 를 먼저 해제하세요:
+#   git config --unset core.hooksPath && pip install pre-commit && pre-commit install
+# (둘은 양자택일 — 동시에 켜지 않습니다. 아래 local 훅으로 비밀스캔은 그대로 유지됩니다.)
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # 프레임워크를 쓰더라도 우리 비밀정보 스캔을 함께 실행
+  - repo: local
+    hooks:
+      - id: secret-scan
+        name: secret scan (.githooks/pre-commit)
+        entry: .githooks/pre-commit
+        language: script
+        pass_filenames: false
