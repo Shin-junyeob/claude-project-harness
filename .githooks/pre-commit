@@ -12,6 +12,9 @@ fail=0
 while IFS= read -r f; do
   [ -z "$f" ] && continue
   case "$f" in
+    # 커밋용 env 템플릿(.example/.sample/.template/.dist)은 허용 — 실제 값이 아니다
+    .env.example|.env.sample|.env.template|.env.dist|*/.env.example|*/.env.sample|*/.env.template|*/.env.dist)
+      : ;;
     .env|.env.*|*/.env|*/.env.*|*.pem|*.key|id_rsa|*/id_rsa|*credentials*|*.p12|*.pfx)
       echo "✗ 민감 파일 커밋 시도: $f" >&2; fail=1;;
   esac
