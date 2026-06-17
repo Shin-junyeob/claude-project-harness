@@ -23,6 +23,7 @@
 | 평가기 | tools/evaluate.py | 결과물 vs golden 비교 오라클 (복사됨) |
 | 자율 진입점 | .claude/commands/autoloop.md | /autoloop 슬래시 커맨드 (복사됨) |
 | 커밋 메시지 | rules/commit_conventions.md | type: subject 영어 커밋 규칙 (복사됨) |
+| 저장소 이름 | rules/repo_naming.md | GitHub repo는 knk_<영문팀명>-automation (복사됨) |
 | 문서 갱신 | rules/doc_update_rules.md | 문서 갱신 정책 (복사됨) |
 | 에이전트 | .claude/agents/ | planner, implementer, validator, doc-updater (복사됨) |
 | 훅 | .claude/hooks/ | 접근/위험명령/repo삭제/커밋메시지 차단, src강제, stable CI게이트, 로그 (복사됨) |

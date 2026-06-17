@@ -36,3 +36,6 @@ Thumbs.db
 
 # publish.sh 의 원격 작업 클론 (발행 대상 아님)
 .publish-workdir/
+
+# 회사 팀명 매핑 (로컬 전용 — 발행/커밋 금지)
+team_repo_map.sh

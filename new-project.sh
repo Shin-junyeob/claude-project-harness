@@ -29,6 +29,25 @@ if [[ "$NAME" == */* || "$NAME" == *" "* || "$NAME" == .* || "$NAME" == -* || -z
   exit 1
 fi
 
+# ── GitHub repo 이름 규칙: knk_<영문팀명>-automation (→ rules/repo_naming.md) ─
+#   GitHub repo 명은 ASCII 만 허용한다. 한글 폴더명을 그대로 쓰면 GitHub 가 '-' 로
+#   치환하므로, 한글 팀명을 영문으로 매핑해 규칙대로 repo 명을 만든다.
+#   2번째 인자로 repo 명을 직접 지정하면 그것을 우선한다.
+GH_REPO="${2:-}"
+# 회사별 팀명 매핑은 로컬 전용 team_repo_map.sh 에서 가져온다(public 저장소엔 없음).
+if [[ -z "$GH_REPO" && -f "$GLOBAL_DIR/team_repo_map.sh" ]]; then
+  GH_REPO="$(bash "$GLOBAL_DIR/team_repo_map.sh" "$NAME" 2>/dev/null || true)"
+fi
+# 매핑 없음: 이름이 유효한 ASCII 면 그대로 사용, 비ASCII 면 비워서 GitHub 건너뜀(— 치환 방지)
+if [[ -z "$GH_REPO" ]]; then
+  if [[ "$NAME" =~ [^A-Za-z0-9._-] ]]; then GH_REPO=""; else GH_REPO="$NAME"; fi
+fi
+# ASCII 검증: 허용문자(영문/숫자/_/-/.) 외가 있거나 비면 무효
+if [[ -n "$GH_REPO" && "$GH_REPO" =~ [^A-Za-z0-9._-] ]]; then
+  echo "오류: GitHub repo 명 '$GH_REPO' 에 허용되지 않는 문자가 있습니다(ASCII 영문/숫자/_/-/. 만)." >&2
+  exit 1
+fi
+
 DEST="$GLOBAL_DIR/$NAME"
 if [[ -e "$DEST" ]]; then
   echo "오류: '$DEST' 가 이미 존재합니다. 덮어쓰지 않습니다." >&2
@@ -111,6 +130,7 @@ cat > "$DEST/CLAUDE.md" <<MD
 | 프로젝트 구조 | rules/project_structure.md | 표준 폴더 구조 |
 | 워크플로 | rules/workflow.md | main/stable 브랜치 전략(stable은 CI 통과 시 merge) |
 | 커밋 메시지 | rules/commit_conventions.md | type: subject 영어 커밋 규칙 |
+| 저장소 이름 | rules/repo_naming.md | GitHub repo는 knk_<영문팀명>-automation |
 | 자율 실행 | rules/autonomous_workflow.md | spec+golden 기반 produce→evaluate→fix 루프 |
 | 컨텍스트 관리 | rules/context_management.md | 외부 체크포인트+재읽기로 긴 루프 유지 |
 | 문서 갱신 | rules/doc_update_rules.md | 문서 갱신 정책 |
@@ -185,14 +205,18 @@ if command -v git >/dev/null 2>&1; then
   echo "  · git init 완료 (main, stable 브랜치)"
 
   # ── GitHub 연동 (gh CLI, private 리포 생성 + 자동 푸시) ─────────────
-  if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+  if [[ -z "$GH_REPO" ]]; then
+    echo "  · GitHub 연동 건너뜀 — repo 명을 규칙대로 정할 수 없습니다." >&2
+    echo "    한글 팀명 매핑이 없으면 영문 repo 명을 직접 주세요(규칙: knk_<영문팀명>-automation):" >&2
+    echo "    예) ./new-project.sh $NAME knk_<영문팀명>-automation   (→ rules/repo_naming.md)" >&2
+  elif command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
     (
       cd "$DEST"
-      if gh repo create "$NAME" --private --source=. --remote=origin --push; then
+      if gh repo create "$GH_REPO" --private --source=. --remote=origin --push; then
         git push -q -u origin stable 2>/dev/null || true
-        echo "  · GitHub private 리포 생성 + 푸시 완료 (main, stable)"
+        echo "  · GitHub private 리포 생성 + 푸시 완료: $GH_REPO (main, stable)"
       else
-        echo "  · GitHub 리포 생성 실패 — 로컬은 정상, 수동으로 연결하세요" >&2
+        echo "  · GitHub 리포 생성 실패($GH_REPO) — 로컬은 정상, 수동으로 연결하세요" >&2
       fi
     )
   else
