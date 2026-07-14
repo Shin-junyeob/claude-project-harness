@@ -1,15 +1,23 @@
 #!/usr/bin/env bash
 #
-# new-project.sh — 전역 디렉토리의 공통 세팅을 새 프로젝트 폴더로 복사한다.
+# new-project.sh — 전역 디렉토리의 공통 세팅을 새 "팀(부서) 폴더"로 복사한다.
 #
-# 사용법:  ./new-project.sh <프로젝트명>
+# 사용법:  ./new-project.sh <팀명> [GitHub-repo명]
+#
+# 구조(팀 = git 저장소 1개, 자동화 = subproject 폴더 1개):
+#   <팀명>/
+#   ├── (공용) rules/ .claude/ tools/ .github/ .githooks/ pyproject.toml Makefile
+#   │         spec.template.yaml .gitignore .gitattributes .editorconfig .env.example ...
+#   ├── CLAUDE.md / README.md            # 팀 이정표
+#   └── subproject/                      # 자동화 템플릿 — 새 자동화마다 이 폴더를 복제해 사용
+#       ├── src/ outputs/ docs/ logs/    # (코드·결과물·문서·로그가 자동화별로 격리됨)
+#       ├── spec.yaml                    # spec.template.yaml 복사본(자동화별 입력 계약)
+#       ├── Makefile                     # 팀 루트의 ../venv·../tools 를 공유하는 실행 진입점
+#       └── CLAUDE.md                    # 자동화별 이정표(상위 팀 규칙 참조)
 #
 # 동작:
-#   - 공통 항목 복사: rules/, .claude/(hooks·agents·commands·settings.json), tools/, tests/,
-#       .github/(CI), .githooks/(pre-commit), spec.template.yaml, pyproject.toml, Makefile,
-#       .env.example, .pre-commit-config.yaml, .gitignore, .gitattributes, .editorconfig
-#   - 생성: CLAUDE.md / README.md (프로젝트명), docs/ logs/ src/ 빈 폴더(.gitkeep), logs/CHECKPOINT.md
-#   - git init 후 main / stable 브랜치 구성 + pre-commit 활성화 + (gh 있으면) GitHub private 연동
+#   - 팀 루트에 공용 항목 복사 + git init(main/stable) + (gh 있으면) GitHub private 연동
+#   - subproject/ 템플릿 1개 생성. 자동화를 시작할 때:  cp -r subproject <자동화명>
 #   - 복사 안 함: mcp/(전역 참조), .claude/settings.local.json(프로젝트별 권한 자동관리)
 #
 set -euo pipefail
@@ -19,13 +27,13 @@ GLOBAL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ── 인자 검증 ────────────────────────────────────────────────────────
 if [[ $# -lt 1 ]]; then
-  echo "사용법: $0 <프로젝트명>" >&2
+  echo "사용법: $0 <팀명> [GitHub-repo명]" >&2
   exit 1
 fi
 NAME="$1"
 # 경로 구분자·공백·앞쪽 하이픈 등 위험한 이름만 거부 (한글 등 일반 문자는 허용)
 if [[ "$NAME" == */* || "$NAME" == *" "* || "$NAME" == .* || "$NAME" == -* || -z "$NAME" ]]; then
-  echo "오류: 프로젝트명에 경로 구분자/공백이 있거나 '.' '-' 로 시작합니다: $NAME" >&2
+  echo "오류: 팀명에 경로 구분자/공백이 있거나 '.' '-' 로 시작합니다: $NAME" >&2
   exit 1
 fi
 
@@ -54,10 +62,10 @@ if [[ -e "$DEST" ]]; then
   exit 1
 fi
 
-echo "▶ 새 프로젝트 생성: $DEST"
+echo "▶ 새 팀 폴더 생성: $DEST"
 mkdir -p "$DEST"
 
-# ── 복사 화이트리스트 (공통 항목만) ──────────────────────────────────
+# ── 팀 공용 항목 복사 (자동화끼리 공유하는 것만) ─────────────────────
 #   mcp/ 와 기존 프로젝트 폴더, 메모리, 엑셀 등은 복사하지 않는다.
 mkdir -p "$DEST/.claude"
 cp -r "$GLOBAL_DIR/rules"            "$DEST/rules"
@@ -85,14 +93,18 @@ find "$DEST" -name '.omc' -type d -prune -exec rm -rf {} + 2>/dev/null || true
 #   /publish 슬래시 커맨드(publish.md)는 .claude/commands 통째 복사로 따라오므로 제거한다.
 rm -f "$DEST/.claude/commands/publish.md" "$DEST/publish.sh" 2>/dev/null || true
 
-# ── 표준 빈 폴더 ─────────────────────────────────────────────────────
-for d in docs logs src; do
-  mkdir -p "$DEST/$d"
-  touch "$DEST/$d/.gitkeep"
+# ── subproject/ 템플릿 (자동화 1개 = 이 폴더 1개. 새 자동화마다 복제해 사용) ──
+SUB="$DEST/subproject"
+for d in src outputs docs logs; do
+  mkdir -p "$SUB/$d"
+  touch "$SUB/$d/.gitkeep"
 done
 
-# ── 컨텍스트 체크포인트 시드 (→ rules/context_management.md) ──────────
-cat > "$DEST/logs/CHECKPOINT.md" <<'MD'
+# 자동화별 입력 계약: 팀 공용 템플릿을 subproject 의 spec.yaml 로 복사
+cp "$GLOBAL_DIR/spec.template.yaml" "$SUB/spec.yaml"
+
+# 컨텍스트 체크포인트 시드 (→ rules/context_management.md)
+cat > "$SUB/logs/CHECKPOINT.md" <<'MD'
 # CHECKPOINT — 작업 진행 상태 (compact/재시작 시 가장 먼저 재읽기)
 
 > 마일스톤마다 갱신한다. 대화가 아니라 이 파일이 진실의 출처다.
@@ -105,52 +117,124 @@ cat > "$DEST/logs/CHECKPOINT.md" <<'MD'
 - (실패 시) 가설:
 MD
 
-# ── 설정 파일 정책 ───────────────────────────────────────────────────
-#   - .claude/settings.json     : 공통 훅. 위 복사 단계에서 전역 원본을 그대로 복제.
-#   - .claude/settings.local.json: 권한. 프로젝트마다 경로·목록이 다르므로 복제하지 않고,
-#                                  각 프로젝트에서 Claude Code 가 필요에 따라 자동 생성·관리.
+# subproject 실행 진입점 — 팀 루트(상위 폴더)의 venv·tools 를 공유한다.
+#   recipe 들여쓰기는 반드시 TAB. 이 폴더를 복제해 만든 자동화 폴더도 팀 루트 바로 아래에 두어야
+#   ../venv, ../tools 상대경로가 맞는다.
+cat > "$SUB/Makefile" <<'MK'
+# subproject 단위 실행 진입점 — 팀 루트(상위 폴더)의 venv·tools 를 공유한다.
+# 새 자동화는 이 폴더를 복제해 만든다:  cp -r subproject <자동화명>
+# (복제본은 반드시 팀 루트 바로 아래에 둘 것 — ../venv, ../tools 경로가 맞아야 한다.)
+ROOT ?= ..
+VENV := $(ROOT)/venv
+PY   := $(VENV)/bin/python
 
-# ── CLAUDE.md (이정표 형식) ──────────────────────────────────────────
-cat > "$DEST/CLAUDE.md" <<MD
-# $NAME
-> 한 줄 프로젝트 설명을 여기에 작성하세요.
+.PHONY: setup run eval lint format test
+setup:   ## 팀 공용 venv 생성/갱신(팀 루트에서 1회면 충분)
+	$(MAKE) -C $(ROOT) setup
+run:     ## 결과물 생성(src/main.py 실행 — spec 의 produce.command 에 맞게 교체)
+	$(PY) src/main.py
+eval:    ## 결과물 vs golden 평가(이 폴더 spec.yaml). 로그·결과물은 이 폴더에 격리된다
+	$(PY) $(ROOT)/tools/evaluate.py spec.yaml
+lint:    ## ruff 린트(이 폴더)
+	$(VENV)/bin/ruff check .
+format:  ## ruff 포맷(이 폴더)
+	$(VENV)/bin/ruff format .
+test:    ## pytest(이 폴더)
+	$(VENV)/bin/pytest
+MK
+
+# subproject 이정표 (상위 팀 공용 규칙을 참조)
+cat > "$SUB/CLAUDE.md" <<'MD'
+# subproject (자동화 템플릿)
+> 자동화 1개 = 이 폴더 1개. 새 자동화는 이 폴더를 복제해 시작한다: `cp -r subproject <자동화명>`
 
 ---
 
 ## 이 파일의 역할
-이 파일은 **이정표(경로 지도)** 역할만 한다. 규칙·절차·에이전트 정의를 직접 쓰지 않는다.
-세부 규칙은 \`rules/\`, 에이전트는 \`.claude/agents/\`, 훅은 \`.claude/hooks/\` 에 둔다.
+이 파일은 **이정표(경로 지도)** 역할만 한다. 규칙·절차는 상위 팀 폴더(`../`)의 공용 자원을 따른다.
+코드·결과물·로그는 이 폴더 안에 격리되어 자동화끼리 섞이지 않는다.
 
 ---
 
 ## 경로 참조표
 | 관심사 | 경로 | 설명 |
 |--------|------|------|
-| 코딩 컨벤션 | rules/coding_conventions.md | 공통 코딩 규칙 |
+| 구현 코드 | src/ | 이 자동화의 코드(팀 규칙: 코드는 src/ 에만) |
+| 결과물 | outputs/ | produce 결과물 |
+| 문서 | docs/ | 이 자동화의 설계·명세 |
+| 로그/체크포인트 | logs/ , logs/CHECKPOINT.md | 에러·이력·컨텍스트 |
+| 입력 계약 | spec.yaml | 자율 실행 명세(팀 spec.template.yaml 복사본) |
+| 실행 진입점 | Makefile | make run/eval/lint/test (팀 ../venv·../tools 공유) |
+| 코딩 컨벤션 | ../rules/coding_conventions.md | 팀 공용 규칙 |
+| 자율 절차 | ../rules/autonomous_workflow.md | produce→evaluate→fix 루프 |
+| 평가기 | ../tools/evaluate.py | 결과물 vs golden 오라클 |
+| 자율 진입점 | /autoloop | 이 폴더에서 실행(spec.yaml 기준) |
+
+---
+
+## 구조 계약
+- 구현 코드는 이 폴더의 `src/` 에만 둔다.
+- 결과물은 `outputs/`, 에러·이력은 `logs/`, 컨텍스트는 `logs/CHECKPOINT.md`.
+- 자율 실행: 팀 루트에서 `make setup`(1회) → 이 폴더에서 `cp ../spec.template.yaml spec.yaml`
+  은 이미 되어 있으니 내용 작성 → 이 폴더에서 `/autoloop`.
+- venv·tools·rules 는 팀 루트(`../`)와 공유한다(자동화마다 중복 생성하지 않음).
+MD
+
+# ── 팀 CLAUDE.md (이정표 형식) ───────────────────────────────────────
+cat > "$DEST/CLAUDE.md" <<MD
+# $NAME
+> 부서(팀) 자동화 저장소. 자동화 1개 = \`subproject/\` 복제 폴더 1개.
+
+---
+
+## 이 파일의 역할
+이 파일은 **이정표(경로 지도)** 역할만 한다. 규칙·절차·에이전트 정의를 직접 쓰지 않는다.
+세부 규칙은 \`rules/\`, 에이전트는 \`.claude/agents/\`, 훅은 \`.claude/hooks/\` 에 둔다.
+이 폴더는 팀 단위 git 저장소이며, 그 안에서 자동화별로 \`subproject/\` 를 복제해 운영한다.
+
+---
+
+## 새 자동화 시작
+\`\`\`bash
+cp -r subproject <자동화명>      # 템플릿 복제(팀 루트 바로 아래에)
+cd <자동화명>
+# spec.yaml 작성 → /autoloop (또는 make run / make eval)
+\`\`\`
+
+## 경로 참조표
+| 관심사 | 경로 | 설명 |
+|--------|------|------|
+| 자동화 템플릿 | subproject/ | 새 자동화마다 복제하는 골격(src·outputs·docs·logs·spec·Makefile) |
+| 코딩 컨벤션 | rules/coding_conventions.md | 팀 공용 코딩 규칙 |
 | 프로젝트 구조 | rules/project_structure.md | 표준 폴더 구조 |
 | 워크플로 | rules/workflow.md | main/stable 브랜치 전략(stable은 CI 통과 시 merge) |
 | 커밋 메시지 | rules/commit_conventions.md | type: subject 영어 커밋 규칙 |
 | 저장소 이름 | rules/repo_naming.md | GitHub repo는 knk_<영문팀명>-automation |
+| 환경변수 | rules/env_management.md | .env는 직접 열지 말고 python-dotenv로 로드, .env.example 기준 |
+| 환경변수 | rules/env_management.md | .env는 직접 열지 말고 python-dotenv로 로드, .env.example 기준 |
 | 자율 실행 | rules/autonomous_workflow.md | spec+golden 기반 produce→evaluate→fix 루프 |
 | 컨텍스트 관리 | rules/context_management.md | 외부 체크포인트+재읽기로 긴 루프 유지 |
 | 문서 갱신 | rules/doc_update_rules.md | 문서 갱신 정책 |
-| 자율 명세 | spec.template.yaml | spec.yaml 로 복사해 작성하는 입력 계약 |
-| 평가기 | tools/evaluate.py | 결과물 vs golden 비교 오라클 |
-| 자율 진입점 | .claude/commands/autoloop.md | /autoloop 슬래시 커맨드 |
-| 작업 명령 | Makefile | make setup/test/lint/run/eval |
+| 자율 명세 | spec.template.yaml | subproject/spec.yaml 로 복사되는 입력 계약 원본 |
+| 평가기 | tools/evaluate.py | 결과물 vs golden 비교 오라클(자동화 폴더에서 실행) |
+| 자율 진입점 | .claude/commands/autoloop.md | /autoloop 슬래시 커맨드(자동화 폴더에서 실행) |
+| 팀 작업 명령 | Makefile | make setup/test/lint/format/clean (공용 venv·toolchain) |
 | 에이전트 | .claude/agents/ | planner, implementer, validator, doc-updater |
-| 훅 | .claude/hooks/ | 접근/위험명령/repo삭제/커밋메시지 차단, src강제, stable CI게이트, 로그 |
+| 훅 | .claude/hooks/ | 접근/위험명령/repo삭제/커밋메시지/.env읽기 차단, src강제, stable CI게이트, 로그 |
 | CI | .github/workflows/ci.yml | ruff 린트 + pytest |
 | MCP | $GLOBAL_DIR/mcp/ | 전역 MCP 설정 참조(복사 안 함) |
 
 ---
 
 ## 구조 계약
-- 구현 코드는 \`src/\` 에만 둔다(\`tools/\`·\`tests/\` 는 예외).
-- 규칙은 \`rules/\`, 에이전트는 \`.claude/agents/\`, 훅은 \`.claude/hooks/\`.
-- 에러·이력은 \`logs/\` 에, 컨텍스트 체크포인트는 \`logs/CHECKPOINT.md\` 에 기록한다.
+- **팀 루트** = 공용 자원: \`rules/\` \`.claude/\` \`tools/\` \`.github/\` \`.githooks/\` \`pyproject.toml\`
+  \`Makefile\`(toolchain) \`spec.template.yaml\` \`venv/\`(make setup 시 생성). 자동화끼리 공유한다.
+- **자동화별 폴더**(\`subproject/\` 복제) = 격리 자원: \`src/\` \`outputs/\` \`docs/\` \`logs/\` \`spec.yaml\`.
+  코드·결과물·로그가 폴더 단위로 분리되어 자동화가 늘어도 섞이지 않는다.
+- 구현 코드는 각 자동화 폴더의 \`src/\` 에만 둔다(\`tools/\`·\`tests/\` 는 예외).
+- 결과물 생성/평가(\`make run\`/\`make eval\`, \`/autoloop\`)는 **자동화 폴더 안에서** 실행한다.
+  (평가기가 cwd 기준으로 outputs·logs·golden 경로를 잡으므로 폴더별로 격리된다.)
 - 수정은 main 브랜치에서, 안정 버전만 stable 로 merge(사용자 명시 명령 + CI 통과 시).
-- 자율 실행: \`make setup\` → \`spec.template.yaml\` 을 \`spec.yaml\` 로 작성 → \`/autoloop\`.
 MD
 
 # ── README.md ────────────────────────────────────────────────────────
@@ -158,28 +242,29 @@ cat > "$DEST/README.md" <<MD
 # $NAME
 
 ## 개요
-(프로젝트 개요를 작성하세요.)
+부서(팀) 자동화 저장소. **자동화 1개 = \`subproject/\` 복제 폴더 1개** 로 운영한다.
+공용 설정(rules·tools·venv·CI)은 팀 루트에서 공유하고, 코드·결과물·로그는 자동화 폴더에 격리된다.
 
 ## 폴더 구조
-- \`src/\` 구현 코드
-- \`rules/\` 코딩·도메인 규칙
-- \`docs/\` 설계·명세
-- \`logs/\` 에러·이력
-- \`.claude/\` 에이전트·훅·설정
+- \`subproject/\` 자동화 템플릿(복제해서 사용). 안에 \`src/ outputs/ docs/ logs/ spec.yaml Makefile\`
+- \`rules/\` 코딩·도메인 규칙(공용)
+- \`tools/\` 평가기 등 공용 도구
+- \`.claude/\` 에이전트·훅·설정(공용)
+- \`pyproject.toml\` \`Makefile\` 공용 toolchain
 
-## 실행 방법
+## 새 자동화 시작
 \`\`\`bash
-make setup     # venv + 의존성 설치
-make test      # 테스트
-make run       # 결과물 생성
+make setup                    # 팀 공용 venv + 의존성(최초 1회)
+cp -r subproject <자동화명>    # 템플릿 복제(팀 루트 바로 아래)
+cd <자동화명>
+cp ../spec.template.yaml spec.yaml   # 이미 복사돼 있음 — 내용만 작성
+make run                      # 결과물 생성
+make eval                     # 결과물 vs golden 평가
 \`\`\`
 
 ## 자율 실행 (golden data 기반 반복)
-\`\`\`bash
-cp spec.template.yaml spec.yaml   # 프로젝트 설명·결과물·golden 경로 작성
-# Claude Code 에서:  /autoloop
-\`\`\`
-결과물이 golden 에 도달할 때까지 produce→evaluate→fix 를 자동 반복한다. (→ rules/autonomous_workflow.md)
+자동화 폴더 안에서 \`spec.yaml\` 작성 후 Claude Code 에서 \`/autoloop\` 실행 →
+결과물이 golden 에 도달할 때까지 produce→evaluate→fix 를 자동 반복. (→ rules/autonomous_workflow.md)
 
 ## 브랜치
 - \`main\`: 개발 작업
@@ -199,7 +284,7 @@ if command -v git >/dev/null 2>&1; then
       git config core.hooksPath .githooks 2>/dev/null || true
     fi
     git add -A
-    git -c user.name="setup" -c user.email="setup@local" commit -q -m "chore: initialize project skeleton" || true
+    git -c user.name="setup" -c user.email="setup@local" commit -q -m "chore: initialize team skeleton" || true
     git branch stable 2>/dev/null || true
   )
   echo "  · git init 완료 (main, stable 브랜치)"
@@ -227,10 +312,10 @@ else
 fi
 
 echo "✅ 완료: $DEST"
-echo "   - 복사: rules/, .claude/(hooks·agents·commands·settings.json), tools/, tests/, .github/(CI), .githooks/(pre-commit)"
-echo "           spec.template.yaml, pyproject.toml, Makefile, .env.example, .pre-commit-config.yaml, .gitignore, .gitattributes, .editorconfig"
-echo "   - 자율 실행: make setup → spec.template.yaml 을 spec.yaml 로 작성 → /autoloop (golden data 기반 반복)"
+echo "   - 팀 공용 복사: rules/, .claude/(hooks·agents·commands·settings.json), tools/, tests/, .github/(CI), .githooks/(pre-commit)"
+echo "                  spec.template.yaml, pyproject.toml, Makefile, .env.example, .pre-commit-config.yaml, .gitignore, .gitattributes, .editorconfig"
+echo "   - subproject/ 템플릿 생성(src·outputs·docs·logs·spec.yaml·Makefile·CLAUDE.md)"
+echo "   - 새 자동화 시작:  cd $NAME && make setup && cp -r subproject <자동화명> && cd <자동화명> && /autoloop"
 echo "   - git pre-commit(비밀정보 차단) 활성화됨"
-echo "   - 생성: CLAUDE.md, README.md, docs/ logs/ src/"
 echo "   - settings.local.json(권한) 은 복제하지 않음 — 프로젝트별로 Claude Code 가 자동 생성·관리"
 echo "   - mcp/ 는 전역($GLOBAL_DIR/mcp/) 을 참조하세요."

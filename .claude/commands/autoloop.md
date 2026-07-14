@@ -7,15 +7,19 @@ allowed-tools: Bash, Read, Write, Edit
 `rules/autonomous_workflow.md` 절차에 따라 자율 실행 루프를 구동한다.
 명세 파일: `$ARGUMENTS` (없으면 `spec.yaml`).
 
+이 루프는 **자동화 폴더(`subproject/` 복제본) 안에서** 실행한다. `src/`·`outputs/`·`logs/`·`spec.yaml`
+은 그 폴더 기준이고, `venv/`·`tools/` 는 팀 루트(`../`)와 공유한다. `make` 타깃이 경로를 연결해 주므로
+자동화 폴더에서 `make setup`/`make run`/`make eval` 을 그대로 호출하면 된다.
+
 ## 절차
 1. **명세 로드**: 명세 파일을 읽는다. 없으면 사용자에게 `spec.template.yaml` 복사를 안내하고 중단.
    - `produce.command`, `produce.output_path`, `golden.path/compare/threshold`, `max_iterations` 확인.
 1.5. **콜드스타트**:
-     - **환경 부트스트랩**: `make setup` (venv + 의존성, pyyaml 포함). 이후 모든 실행은 `venv/bin/python` 사용.
+     - **환경 부트스트랩**: `make setup` (팀 공용 venv + 의존성, pyyaml 포함 — 없을 때 1회). 이후 모든 실행은 팀 공용 `../venv/bin/python` 사용.
      - `src/` 가 비었으면 `spec.description`/`structure` 기반 최소 골격을 작성해 `produce.command` 가 결과물을 만들 수 있게 한다.
 2. **루프** (최대 `max_iterations` 회):
    a. `produce.command` 실행 → 결과물 생성.
-   b. `make eval` (= `venv/bin/python tools/evaluate.py <명세파일>`) 실행. 종료코드 0 이면 **완료**. (bare `python` 금지)
+   b. `make eval` (= `../venv/bin/python ../tools/evaluate.py <명세파일>`) 실행. 종료코드 0 이면 **완료**. (bare `python` 금지)
    c. 0 이 아니면 `logs/eval/latest.json`(diff)·`logs/iterations.md`(과거 시도)를 읽고,
       틀린 원인 가설 → `src/` 수정 → 시도 단락을 `logs/iterations.md` 에 기록 → (a) 로 반복.
 3. **완료**: evaluate exit 0 또는 (golden 미지정 시) 결과물 생성 + `acceptance` 충족.

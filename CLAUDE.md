@@ -13,7 +13,7 @@
 ## 경로 참조표
 | 관심사 | 경로 | 설명 |
 |--------|------|------|
-| 새 프로젝트 생성 | new-project.sh | 공통 세팅을 복사해 새 프로젝트 폴더 생성 |
+| 새 팀 폴더 생성 | new-project.sh | 공통 세팅 복사 + subproject 템플릿 포함한 팀(부서) 폴더 생성 |
 | 코딩 컨벤션 | rules/coding_conventions.md | 공통 코딩 규칙 (복사됨) |
 | 프로젝트 구조 | rules/project_structure.md | 표준 폴더 구조 (복사됨) |
 | 워크플로 | rules/workflow.md | main/stable 브랜치 전략 (복사됨) |
@@ -24,9 +24,10 @@
 | 자율 진입점 | .claude/commands/autoloop.md | /autoloop 슬래시 커맨드 (복사됨) |
 | 커밋 메시지 | rules/commit_conventions.md | type: subject 영어 커밋 규칙 (복사됨) |
 | 저장소 이름 | rules/repo_naming.md | GitHub repo는 knk_<영문팀명>-automation (복사됨) |
+| 환경변수 | rules/env_management.md | .env는 직접 열지 말고 python-dotenv로 로드, .env.example 기준 (복사됨) |
 | 문서 갱신 | rules/doc_update_rules.md | 문서 갱신 정책 (복사됨) |
 | 에이전트 | .claude/agents/ | planner, implementer, validator, doc-updater (복사됨) |
-| 훅 | .claude/hooks/ | 접근/위험명령/repo삭제/커밋메시지 차단, src강제, stable CI게이트, 로그 (복사됨) |
+| 훅 | .claude/hooks/ | 접근/위험명령/repo삭제/커밋메시지/.env읽기 차단, src강제, stable CI게이트, 로그 (복사됨) |
 | MCP | mcp/ | 전역 전용 MCP 설정 (복사 안 함, 참조) |
 | CI | .github/workflows/ci.yml | ruff 린트 + pytest (복사됨, stable CI게이트와 연동) |
 | git pre-commit | .githooks/pre-commit | 비밀정보 커밋 차단 + ruff 린트 (복사·init 시 활성화) |
@@ -46,4 +47,5 @@
 - 복사 대상(화이트리스트): `rules/`, `.claude/hooks/`, `.claude/agents/`, `.claude/commands/`, `.claude/settings.json`(공통 훅), `tools/`, `tests/`, `.github/`(CI), `.githooks/`(pre-commit), `spec.template.yaml`, `pyproject.toml`, `Makefile`, `.env.example`, `.pre-commit-config.yaml`, `.gitignore`, `.gitattributes`, `.editorconfig`, 그리고 생성물(CLAUDE.md, README.md, docs/ logs/ src/).
 - 설정 파일 분리: `settings.json`=훅(복사), `settings.local.json`=권한(복사 안 함). 권한은 디렉토리마다 목록·경로가 다르므로 각 프로젝트에서 Claude Code 가 자동 생성·관리한다. 훅 경로는 절대경로 박제 대신 `$CLAUDE_PROJECT_DIR`(현재 프로젝트 루트로 자동 치환되는 변수)를 써서, 복제된 프로젝트마다 자기 폴더 기준으로 동작하고 작업 디렉토리(cwd) 변화에도 안전하게 한다.
 - 복사 제외: `mcp/`(전역 참조), `settings.local.json`(권한), 기존 프로젝트 폴더, 메모리, 개인 파일.
-- 새 프로젝트는 git `main`/`stable` 2-브랜치로 운영. stable merge는 사용자 명시 명령 시에만.
+- 새 팀 폴더는 git `main`/`stable` 2-브랜치로 운영. stable merge는 사용자 명시 명령 시에만.
+- **팀=저장소, 자동화=폴더 구조**: `new-project.sh <팀명>` 가 팀 루트(공용 rules/·.claude/·tools/·venv·CI·spec.template.yaml)와 `subproject/` 템플릿을 생성한다. 자동화를 하나 시작할 때마다 `cp -r subproject <자동화명>` 로 복제한다(`팀/자동화/src` 구조). 코드·결과물·로그는 자동화 폴더에 격리되고, toolchain은 팀 루트에서 공유한다. 자동화 폴더의 Makefile은 상위 팀의 `../venv`·`../tools` 를 참조하므로 복제본은 팀 루트 바로 아래에 둔다.

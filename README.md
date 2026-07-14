@@ -1,18 +1,23 @@
 # Claude Project Harness
 
-새 프로젝트의 **공통 뼈대(금형)** 를 한 번의 명령으로 찍어내는 하네스입니다.
-규칙·안전장치(훅)·CI·자율 실행 루프를 미리 갖춰두고, `./new-project.sh <이름>` 으로 새 프로젝트에 복제합니다.
+부서(팀) 자동화 저장소의 **공통 뼈대(금형)** 를 한 번의 명령으로 찍어내는 하네스입니다.
+규칙·안전장치(훅)·CI·자율 실행 루프를 미리 갖춰두고, `./new-project.sh <팀명>` 으로 팀 저장소에 복제합니다.
+
+**구조: 팀=저장소, 자동화=폴더.** 팀 루트에는 공용 자원(규칙·도구·toolchain)과 `subproject/` 템플릿이
+있고, 자동화를 하나 시작할 때마다 `subproject/` 를 복제합니다(`팀/자동화/src` 구조). 코드·결과물·로그는
+자동화 폴더에 격리되고, venv·tools·rules 는 팀 루트에서 공유합니다. (→ `rules/project_structure.md`)
 
 > 📖 시각화된 상세 가이드: **`new-project-guide.html`** (브라우저로 열기, 외부 의존 없음)
 
 ## 빠른 시작 (다른 로컬에서)
 ```bash
 git clone <this-repo> harness && cd harness
-./new-project.sh myproj          # 공통 세팅 복제 + git(main/stable) + pre-commit + (gh 있으면) GitHub 연동
-cd myproj
-make setup                       # venv + 의존성
-cp spec.template.yaml spec.yaml  # 프로젝트 설명·결과물·golden 경로 작성
-# Claude Code 에서:  /autoloop   # 결과물이 golden 에 도달할 때까지 자동 반복
+./new-project.sh myteam          # 팀 저장소 + subproject 템플릿 생성 + git(main/stable) + pre-commit + (gh 있으면) GitHub 연동
+cd myteam
+make setup                       # 팀 공용 venv + 의존성 (최초 1회)
+cp -r subproject myautomation    # 자동화 시작마다 템플릿 복제 (팀 루트 바로 아래)
+cd myautomation
+# spec.yaml 작성(이미 복사돼 있음) → Claude Code 에서:  /autoloop   # golden 에 도달할 때까지 자동 반복
 ```
 
 ## 무엇이 들어있나

@@ -3,6 +3,11 @@
 사람이 매 턴 개입하지 않고, **명세(spec) + golden data**를 근거로 결과물이 목표에 도달할 때까지
 스스로 반복하는 절차다. 입력은 `spec.yaml`, 판정 오라클은 `tools/evaluate.py`, 학습 근거는 `logs/`.
 
+이 루프는 **자동화 폴더(`subproject/` 복제본) 안에서** 실행한다. `src/`·`outputs/`·`logs/`·`spec.yaml`
+은 모두 그 폴더 기준이고, `venv/`·`tools/` 는 상위 팀 루트(`../`)와 공유한다(→ [project_structure.md](project_structure.md)).
+아래의 `make setup`/`make run`/`make eval` 은 자동화 폴더의 Makefile 이 팀 루트의 `../venv`·`../tools` 로
+연결해 주므로, 자동화 폴더에서 그대로 호출하면 된다.
+
 ## 입력 계약
 - `spec.yaml` — `spec.template.yaml` 을 복사해 작성한다. (→ [project_structure.md](project_structure.md))
   - `produce.command` / `produce.output_path` — 결과물을 생성하는 명령과 산출 경로
@@ -16,7 +21,7 @@
 
 ## 콜드스타트 (0회차)
 복제 직후엔 실행 환경도 구현도 없어 첫 `produce.command` 가 실패한다. 루프 진입 전에 **반드시**:
-1. **환경 부트스트랩**: `make setup` (venv 생성 + 의존성 설치, pyyaml 포함). 이후 produce·evaluate 는 **모두 같은 인터프리터**(`venv/bin/python`)를 쓴다 — 평가기는 `make eval` 또는 `venv/bin/python tools/evaluate.py <spec>` 로 호출(bare `python` 금지).
+1. **환경 부트스트랩**: `make setup` (팀 공용 venv 생성 + 의존성 설치, pyyaml 포함 — 팀 루트에 venv 가 없을 때 1회). 이후 produce·evaluate 는 **모두 같은 인터프리터**(팀 공용 `../venv/bin/python`)를 쓴다 — 평가기는 자동화 폴더에서 `make eval`(= `../venv/bin/python ../tools/evaluate.py <spec>`)로 호출(bare `python` 금지).
 2. **최소 구현 작성**: `spec.description`/`structure` 를 읽고 `src/` 에 결과물을 생성하는 골격 코드를 만든다.
 3. 그 다음 produce→evaluate→fix 루프로 들어간다.
 
@@ -28,7 +33,7 @@
 
 ## 루프 (produce → evaluate → fix)
 1. **produce**: `spec.produce.command` 실행 → 결과물 생성.
-2. **evaluate**: `make eval` (= `venv/bin/python tools/evaluate.py spec.yaml`) 실행.
+2. **evaluate**: 자동화 폴더에서 `make eval` (= `../venv/bin/python ../tools/evaluate.py spec.yaml`) 실행.
    - 종료코드 **0 = 통과(완료)**, 1 = 불일치, 2 = 설정 오류.
    - 판정/diff 는 `logs/eval/latest.json` 과 `logs/iterations.md` 에 기록된다.
 3. **fix**: 통과가 아니면 `logs/eval/latest.json`(diff)과 `logs/iterations.md`(과거 시도)를 읽고,

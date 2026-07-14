@@ -1,7 +1,8 @@
 # 자율 실행 명세 (autonomous spec)
-# 새 프로젝트에서 이 파일을 spec.yaml 로 복사해 채우세요:  cp spec.template.yaml spec.yaml
+# 자동화 폴더(subproject/ 복제본)에는 이미 spec.yaml 로 복사돼 있다 — 내용만 채우세요.
+#   (수동 복사 시:  cp ../spec.template.yaml spec.yaml)
 # /autoloop 또는 ralph/autopilot 가 이 명세를 읽어, 결과물이 golden 에 도달할 때까지
-# logs 를 근거로 스스로 반복합니다.
+# logs 를 근거로 스스로 반복합니다. (자동화 폴더 안에서 실행)
 
 project:
   name: ""                       # 프로젝트명

@@ -65,62 +65,65 @@
 
 <header class="hero">
   <h1>🏗️ new-project.sh — 하네스 가이드</h1>
-  <p>전역 디렉토리는 <b>새 프로젝트를 찍어내는 금형(템플릿)</b>입니다. 공통 규칙·훅·도구·자율 실행 루프를 미리 갖춰두고, 한 번의 명령으로 새 프로젝트 폴더에 복제합니다.</p>
-  <span class="cmd">$ ./new-project.sh &lt;프로젝트명&gt;</span>
+  <p>전역 디렉토리는 <b>팀(부서) 저장소를 찍어내는 금형(템플릿)</b>입니다. 공통 규칙·훅·도구·자율 실행 루프를 미리 갖춰두고, 한 번의 명령으로 <b>팀 단위 git 저장소</b>를 만듭니다. 그 안에서 <b>자동화 1개 = <code>subproject/</code> 복제 폴더 1개</b>로 운영합니다.</p>
+  <span class="cmd">$ ./new-project.sh &lt;팀명&gt; &lt;git repo명&gt;</span>
 </header>
 
 <h2>① 한눈에</h2>
 <div class="grid g2">
   <div class="card">
     <h3>무엇을 하나</h3>
-    <p>전역의 공통 세팅을 새 폴더로 <b>복제</b> → <b>git</b>(main/stable) 초기화 → <b>pre-commit</b> 활성화 → (gh 있으면) <b>GitHub private 리포</b> 생성·푸시.</p>
+    <p>전역의 공통 세팅을 새 <b>팀 폴더</b>로 <b>복제</b> + <b><code>subproject/</code> 템플릿</b> 생성 → <b>git</b>(main/stable) 초기화 → <b>pre-commit</b> 활성화 → (gh 있으면) <b>GitHub private 리포</b> 생성·푸시.</p>
   </div>
   <div class="card">
     <h3>무엇을 위해</h3>
-    <p>모든 프로젝트가 동일한 <b>규칙·안전장치·자율 실행 루프</b>를 갖고 시작하도록. 매번 세팅을 다시 만들 필요가 없습니다.</p>
+    <p>한 팀(저장소)이 동일한 <b>규칙·안전장치·자율 실행 루프</b>를 갖고 시작하도록. 공용 toolchain(venv·tools·rules)은 팀 루트에서 공유하고, 코드·결과물·로그는 자동화 폴더에 격리됩니다.</p>
   </div>
 </div>
 <div class="legend" style="margin-top:14px">
-  <span class="chip">📜 규칙 7</span><span class="chip">🪝 훅 8</span><span class="chip">🤖 에이전트 4</span>
-  <span class="chip">🔁 자율 루프</span><span class="chip">🧪 CI + 테스트</span><span class="chip">🔌 MCP(github·notion)</span>
+  <span class="chip">📜 규칙 8</span><span class="chip">🪝 훅 8</span><span class="chip">🤖 에이전트 4</span>
+  <span class="chip">📁 subproject 격리</span><span class="chip">🔁 자율 루프</span><span class="chip">🧪 CI + 테스트</span><span class="chip">🔌 MCP(github·notion)</span>
 </div>
 
 <h2>② 사용법</h2>
 <ol class="steps">
-  <li><b>생성</b> — <code>./new-project.sh myproj</code> (이름에 <code>/</code>·공백·<code>.</code>/<code>-</code> 시작은 거부, 한글 허용)</li>
-  <li><b>환경</b> — 생성된 폴더에서 <code>make setup</code> (venv + 의존성, pyyaml 포함)</li>
-  <li><b>작성</b> — <code>cp spec.template.yaml spec.yaml</code> 후 프로젝트 설명·결과물·golden 경로 기입</li>
-  <li><b>자율 실행</b> — Claude Code 에서 <code>/autoloop</code> → 결과물이 golden 에 도달할 때까지 자동 반복</li>
+  <li><b>팀 생성</b> — <code>./new-project.sh myteam</code> (이름에 <code>/</code>·공백·<code>.</code>/<code>-</code> 시작은 거부, 한글 허용) → 팀 저장소 + <code>subproject/</code> 템플릿</li>
+  <li><b>환경(팀 1회)</b> — <code>cd myteam</code> 후 <code>make setup</code> (팀 공용 venv + 의존성, pyyaml 포함)</li>
+  <li><b>자동화 시작</b> — <code>cp -r subproject &lt;자동화명&gt;</code> (반드시 <b>팀 루트 바로 아래</b>에) → <code>cd &lt;자동화명&gt;</code></li>
+  <li><b>작성</b> — <code>spec.yaml</code> 은 이미 복사돼 있으니, 자동화 설명·결과물·golden 경로만 기입</li>
+  <li><b>자율 실행</b> — 자동화 폴더 안에서 Claude Code 의 <code>/autoloop</code> (또는 <code>make run</code> / <code>make eval</code>) → golden 도달까지 자동 반복</li>
 </ol>
-<div class="note warn"><b>주의</b> — 같은 이름의 폴더가 이미 있으면 덮어쓰지 않고 중단합니다. <code>gh</code> 미인증이면 GitHub 연동만 건너뛰고 로컬은 정상 생성됩니다.</div>
+<div class="note warn"><b>주의</b> — 같은 이름의 폴더가 이미 있으면 덮어쓰지 않고 중단합니다. <code>gh</code> 미인증이면 GitHub 연동만 건너뛰고 로컬은 정상 생성됩니다. 자동화 폴더는 <b>팀 루트 바로 아래</b>에 두어야 <code>../venv</code>·<code>../tools</code> 상대경로가 맞습니다.</div>
 
 <h2>③ 무엇이 복제되는가</h2>
 <p>복사는 <b>화이트리스트 방식</b>입니다(필요한 것만 통째로). 런타임 상태(<code>.omc</code>)는 복제 후 자동 제거됩니다.</p>
 <table>
   <tr><th>분류</th><th>항목</th><th>비고</th></tr>
-  <tr><td>규칙</td><td><code>rules/</code> (7개)</td><td>코딩·구조·워크플로·커밋·자율실행·컨텍스트·문서갱신</td></tr>
+  <tr><td>규칙</td><td><code>rules/</code> (8개)</td><td>코딩·구조·워크플로·커밋·자율실행·컨텍스트·문서갱신·repo이름</td></tr>
   <tr><td>Claude</td><td><code>.claude/hooks · agents · commands · settings.json</code></td><td>훅·에이전트·/autoloop·훅등록</td></tr>
-  <tr><td>자율루프</td><td><code>tools/evaluate.py</code>, <code>spec.template.yaml</code>, <code>tests/</code></td><td>오라클·입력계약·테스트</td></tr>
-  <tr><td>품질</td><td><code>.github/</code>, <code>.githooks/</code>, <code>pyproject.toml</code>, <code>Makefile</code>, <code>ruff/pytest 설정</code></td><td>CI·pre-commit·의존성·작업명령</td></tr>
+  <tr><td>자율루프</td><td><code>tools/evaluate.py</code>, <code>spec.template.yaml</code>, <code>tests/</code></td><td>오라클·입력계약(원본)·테스트</td></tr>
+  <tr><td>품질</td><td><code>.github/</code>, <code>.githooks/</code>, <code>pyproject.toml</code>, <code>Makefile</code>, <code>ruff/pytest 설정</code></td><td>CI·pre-commit·의존성·팀 toolchain</td></tr>
   <tr><td>환경</td><td><code>.gitignore · .gitattributes · .editorconfig · .env.example · .pre-commit-config.yaml</code></td><td>줄바꿈·에디터·env 예시</td></tr>
-  <tr><td>생성물</td><td><code>CLAUDE.md · README.md · docs/ logs/ src/ · logs/CHECKPOINT.md</code></td><td>프로젝트명으로 생성</td></tr>
+  <tr><td>팀 생성물</td><td><code>CLAUDE.md · README.md</code></td><td>팀명으로 생성된 이정표(팀 루트)</td></tr>
+  <tr><td>자동화 템플릿</td><td><code>subproject/</code> = <code>src/ outputs/ docs/ logs/ spec.yaml Makefile CLAUDE.md · logs/CHECKPOINT.md</code></td><td>새 자동화마다 <code>cp -r</code> 로 복제(격리)</td></tr>
 </table>
-<div class="note"><b>복사 안 함(의도적)</b> — <code>mcp/</code>(전역 참조), <code>.claude/settings.local.json</code>(프로젝트별 권한은 Claude Code 가 자동 관리), 다른 프로젝트 폴더·메모리·개인 파일.</div>
+<div class="note"><b>복사 안 함(의도적)</b> — <code>mcp/</code>(전역 참조), <code>.claude/settings.local.json</code>(팀별 권한은 Claude Code 가 자동 관리), 다른 팀 폴더·메모리·개인 파일. 하네스 전용 <code>publish</code>(슬래시 커맨드·스크립트)도 복제본에서 제거됩니다.</div>
 
-<h2>④ 폴더 구조 (복제 결과)</h2>
-<div class="tree"><span class="k">myproj/</span>
-├── <span class="k">CLAUDE.md</span><span class="c">          # 이정표(경로 지도) — 규칙·도구 위치를 가리킴</span>
+<h2>④ 폴더 구조 (팀 루트 = 공용, subproject = 자동화 격리)</h2>
+<div class="tree"><span class="k">myteam/</span><span class="c">                    # = 팀(부서) git 저장소 1개</span>
+├── <span class="k">CLAUDE.md</span><span class="c">          # 팀 이정표(경로 지도) — 규칙·도구 위치를 가리킴</span>
 ├── README.md
-├── <span class="k">spec.template.yaml</span><span class="c"> # → spec.yaml 로 복사해 자율 실행 명세 작성</span>
-├── Makefile<span class="c">           # make setup / test / lint / run / eval</span>
+├── <span class="k">spec.template.yaml</span><span class="c"> # subproject/spec.yaml 로 복사되는 입력 계약 원본</span>
+├── Makefile<span class="c">           # 팀 공용 toolchain: make setup / lint / format / test / clean</span>
 ├── pyproject.toml<span class="c">     # 의존성 + ruff + pytest 통합</span>
-├── <span class="k">rules/</span><span class="c">             # 공통 규칙 7</span>
+├── <span class="y">venv/</span><span class="c">              # make setup 시 생성 — 자동화들이 공유하는 팀 공용 venv</span>
+├── <span class="k">rules/</span><span class="c">             # 공통 규칙 8 (자동화들이 공유)</span>
 │   ├── coding_conventions.md   project_structure.md   workflow.md
-│   ├── commit_conventions.md   doc_update_rules.md
+│   ├── commit_conventions.md   doc_update_rules.md   repo_naming.md
 │   ├── <span class="y">autonomous_workflow.md</span><span class="c">  # 자율 루프 절차</span>
 │   └── <span class="y">context_management.md</span><span class="c">   # 긴 루프 컨텍스트 유지</span>
 ├── <span class="k">tools/</span>
-│   └── <span class="y">evaluate.py</span><span class="c">        # 결과물 vs golden 비교 오라클</span>
+│   └── <span class="y">evaluate.py</span><span class="c">        # 결과물 vs golden 비교 오라클(자동화 폴더에서 실행)</span>
 ├── <span class="k">tests/</span><span class="c">             # test_smoke.py, test_evaluate.py</span>
 ├── <span class="k">.claude/</span>
 │   ├── hooks/<span class="c">         # 안전장치 8</span>
@@ -129,14 +132,22 @@
 │   └── settings.json<span class="c">  # 훅 등록 (권한=settings.local.json, 미복제)</span>
 ├── <span class="k">.github/</span>workflows/ci.yml<span class="c">   # ruff + pytest</span>
 ├── <span class="k">.githooks/</span>pre-commit<span class="c">       # 비밀정보 커밋 차단</span>
-├── <span class="k">src/</span><span class="c">      # 구현 코드(여기에만)</span>
-├── <span class="k">docs/</span>
-└── <span class="k">logs/</span>
-    └── <span class="y">CHECKPOINT.md</span><span class="c">      # compact/재시작 시 가장 먼저 재읽기</span>
+│
+└── <span class="k">subproject/</span><span class="c">        # 자동화 템플릿 — 새 자동화마다 복제:  cp -r subproject &lt;자동화명&gt;</span>
+    ├── <span class="k">CLAUDE.md</span><span class="c">      # 자동화 이정표(상위 팀 ../rules·../tools 참조)</span>
+    ├── <span class="k">spec.yaml</span><span class="c">      # 자율 실행 명세(spec.template.yaml 복사본, 자동화별)</span>
+    ├── Makefile<span class="c">       # 자동화 진입점: make run / eval (팀 ../venv·../tools 공유)</span>
+    ├── <span class="k">src/</span><span class="c">           # 구현 코드(이 자동화 폴더에만)</span>
+    ├── <span class="k">outputs/</span><span class="c">       # produce 결과물(자동화별 격리)</span>
+    ├── <span class="k">docs/</span>
+    └── <span class="k">logs/</span>
+        └── <span class="y">CHECKPOINT.md</span><span class="c">  # compact/재시작 시 가장 먼저 재읽기</span>
+
+<span class="c"># 자동화를 하나 시작하면 →</span>  <span class="k">myteam/월간보고서/</span><span class="c">  (subproject 복제본, 코드·로그가 여기 격리됨)</span>
 </div>
 
 <h2>⑤ Loop Station — 자율 실행이 도는 법</h2>
-<p>사람이 매 턴 개입하지 않고, <b>명세(spec) + golden data</b>를 근거로 결과물이 목표에 도달할 때까지 스스로 반복합니다. 판정 오라클은 <code>tools/evaluate.py</code>, 학습 근거는 <code>logs/</code>.</p>
+<p>사람이 매 턴 개입하지 않고, <b>명세(spec) + golden data</b>를 근거로 결과물이 목표에 도달할 때까지 스스로 반복합니다. 판정 오라클은 팀 공용 <code>../tools/evaluate.py</code>, 학습 근거는 자동화 폴더의 <code>logs/</code>. 이 루프는 <b>자동화 폴더(subproject 복제본) 안에서</b> 돕니다 — cwd 가 그 폴더라 결과물·로그가 자동화별로 격리됩니다.</p>
 
 <svg viewBox="0 0 760 360" role="img" aria-label="자율 실행 루프 다이어그램">
   <defs>
@@ -153,7 +164,7 @@
   <!-- cold start -->
   <rect x="20" y="20" width="170" height="56" rx="10" fill="#1f2538" stroke="#2c3550"/>
   <text x="105" y="44" fill="#e8ecf5" font-size="14" text-anchor="middle" font-weight="700">0. 콜드스타트</text>
-  <text x="105" y="62" fill="#9aa4bd" font-size="11.5" text-anchor="middle">make setup + 골격 작성</text>
+  <text x="105" y="62" fill="#9aa4bd" font-size="11.5" text-anchor="middle">팀 make setup + subproject 복제</text>
 
   <!-- produce -->
   <rect x="20" y="150" width="170" height="60" rx="10" fill="#1f2538" stroke="#6aa9ff"/>
@@ -224,14 +235,14 @@
 <h2>⑦ 구현 방식 (new-project.sh 내부)</h2>
 <div class="grid g2">
   <div class="card"><h3>1) 인자 검증</h3><p>이름에 경로 구분자·공백, <code>.</code>/<code>-</code> 시작을 거부. 기존 폴더가 있으면 덮어쓰지 않고 중단(<span class="mono">멱등·안전</span>).</p></div>
-  <div class="card"><h3>2) 화이트리스트 복사</h3><p><code>cp -r</code> 로 폴더 통째 복사 → 새 파일이 자동 포함. 복사 후 <code>.omc</code> 런타임 상태를 prune.</p></div>
-  <div class="card"><h3>3) 생성물</h3><p>프로젝트명으로 <code>CLAUDE.md</code>(경로표) · <code>README.md</code> · <code>logs/CHECKPOINT.md</code> 시드 작성.</p></div>
+  <div class="card"><h3>2) 화이트리스트 복사</h3><p>팀 루트에 공용 항목만 <code>cp -r</code> 통째 복사 → 새 파일이 자동 포함. 복사 후 <code>.omc</code> 런타임 상태와 하네스 전용 <code>publish</code> 를 prune.</p></div>
+  <div class="card"><h3>3) subproject 템플릿 + 생성물</h3><p><code>subproject/</code>(<code>src·outputs·docs·logs·spec.yaml·Makefile·CLAUDE.md</code>) 골격 생성. 팀명으로 팀 <code>CLAUDE.md</code>(경로표)·<code>README.md</code>, 자동화 <code>logs/CHECKPOINT.md</code> 시드 작성.</p></div>
   <div class="card"><h3>4) git + 안전망</h3><p><code>git init</code> → main/stable 브랜치 → <code>.git/hooks</code> 에 pre-commit 설치(+<code>core.hooksPath=.githooks</code>) → 영어 컨벤션 초기 커밋.</p></div>
   <div class="card"><h3>5) GitHub 연동</h3><p><code>gh</code> 인증 시 <code>gh repo create --private --push</code> 로 리포 생성 + main/stable 푸시. 미인증이면 건너뜀.</p></div>
-  <div class="card"><h3>6) 인터프리터 통일</h3><p>produce·evaluate 모두 <code>venv/bin/python</code>(make 타깃) 사용 — 복제 직후 첫 회차부터 깨지지 않게.</p></div>
+  <div class="card"><h3>6) 인터프리터 통일</h3><p>자동화 폴더의 <code>make run</code>/<code>make eval</code> 은 팀 공용 <code>../venv/bin/python</code> 을 사용 — 자동화마다 venv 를 새로 만들지 않고, 복제 직후 첫 회차부터 깨지지 않게.</p></div>
 </div>
 
-<div class="note"><b>설정 파일 분리</b> — <code>settings.json</code>=공통 훅(복제됨, Claude Code가 안 건드림) / <code>settings.local.json</code>=권한(복제 안 함, 프로젝트마다 자동 관리). 훅 경로는 <code>$CLAUDE_PROJECT_DIR</code> 로 프로젝트 루트 기준 동작.</div>
+<div class="note"><b>설정 파일 분리</b> — <code>settings.json</code>=공통 훅(복제됨, Claude Code가 안 건드림) / <code>settings.local.json</code>=권한(복제 안 함, 팀마다 자동 관리). 훅 경로는 <code>$CLAUDE_PROJECT_DIR</code> 로 팀 저장소 루트 기준 동작.</div>
 
 <footer>
   생성: 전역 하네스 디렉토리 · new-project.sh 가이드 · 자기완결형 HTML(외부 의존 없음)<br>
